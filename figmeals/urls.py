@@ -33,6 +33,6 @@ schema_view = get_schema_view(
 
 urlpatterns = [
     path('api/', include('figmeals.figmealsapp.urls')),  # Include app-specific URLs
-    path('docs/', schema_view.with_ui('swagger', cache_timeout=0), name='docs'),
+    path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='swagger'),
 ]
 
