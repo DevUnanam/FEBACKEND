@@ -46,16 +46,21 @@ class MealViewSet(viewsets.ModelViewSet):
     # Only authenticated users can view meals, but only admins can create/update/delete meals.
     def get_permissions(self):
         if self.action in ['create', 'update', 'destroy']:
-            # Only allow admins to perform create, update, or delete actions.
-            return [IsAdminUser()]
-        # Allow authenticated users to view meals.
-        return [IsAuthenticated()]
-
+            return [IsAdminUser()]  # Only allow admins to modify meals
+        if self.request.path.startswith("/swagger/"):
+            return [AllowAny()]  # Allow Swagger to access meals
+        return [IsAuthenticated()] 
 # Order Management Views
 class OrderViewSet(viewsets.ModelViewSet):
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
-    permission_classes = [IsAuthenticated]  # Only authenticated users can access orders
+
+    def get_permissions(self):
+        # Allow unrestricted access for Swagger UI
+        if self.request.path.startswith("/swagger/"):
+            return [AllowAny()]  # No authentication required for Swagger UI
+        # Apply IsAuthenticated permission for other requests
+        return [IsAuthenticated()]
 
     def get_queryset(self):
         """
@@ -79,9 +84,33 @@ class OrderViewSet(viewsets.ModelViewSet):
         if order.user != request.user and not request.user.is_staff:  # Only allow admins to view others' orders
             return Response({'error': 'You do not have permission to view this order.'}, status=status.HTTP_403_FORBIDDEN)
         return super().retrieve(request, *args, **kwargs)
+
 class AdminOrderUpdateView(APIView):
     def put(self, request, pk):
         order = get_object_or_404(Order, id=pk)
         order.status = request.data.get('status')
         order.save()
         return Response({'message': 'Order status updated!'}, status=status.HTTP_200_OK)
+
+    def get_permissions(self):
+        # Allow unrestricted access for Swagger UI
+        if self.request.path.startswith("/swagger/"):
+            return [AllowAny()]  # No authentication required for Swagger UI
+        # Apply IsAuthenticated permission for other requests
+        return [IsAuthenticated()]
+
+    
+class LogoutView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        # Delete the user's token
+        request.user.auth_token.delete()
+        return Response({"message": "Successfully logged out."}, status=200)
+
+    def get_permissions(self):
+        # Allow unrestricted access for Swagger UI
+        if self.request.path.startswith("/swagger/"):
+            return [AllowAny()]  # No authentication required for Swagger UI
+        # Apply IsAuthenticated permission for other requests
+        return [IsAuthenticated()]
